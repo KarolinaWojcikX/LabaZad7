@@ -4,6 +4,8 @@
 #include <fstream>
 #include <ctime>
 #include <algorithm>
+#include <chrono>
+#include <iomanip>
 
 using namespace std;
 
@@ -30,11 +32,48 @@ void displayWord(const string& word, const vector<bool>& guessed) {
     cout << endl;
 }
 
+struct Score {
+    string name;
+    int points;
+    
+    Score(const string& n, int p) : name(n), points(p) {}
+};
+
+vector<Score> loadHighScores(const string& filename) {
+    vector<Score> scores;
+    ifstream file(filename);
+    string name;
+    int points;
+    while (file >> name >> points) {
+        scores.emplace_back(name, points);
+    }
+    return scores;
+}
+
+void saveHighScores(const string& filename, const vector<Score>& scores) {
+    ofstream file(filename);
+    for (const auto& score : scores) {
+        file << score.name << " " << score.points << endl;
+    }
+}
+
+void displayHighScores(const vector<Score>& scores) {
+    cout << "Najlepsze wyniki:" << endl;
+    for (size_t i = 0; i < min(scores.size(), size_t(10)); ++i) {
+        cout << i + 1 << ". " << scores[i].name << ": " << scores[i].points << endl;
+    }
+}
+
+int calculateScore(int remainingChances, double timeSpent) {
+    return static_cast<int>(1000 * remainingChances / (1 + timeSpent));
+}
 int main() {
     srand(time(0));
     string word = loadRandomWord("words.txt");
     vector<bool> guessed(word.length(), false);
     int chances = 6;
+
+    auto startTime = chrono::steady_clock::now();
 
     while (chances > 0) {
         displayWord(word, guessed);
@@ -57,10 +96,30 @@ int main() {
         }
 
         if (all_of(guessed.begin(), guessed.end(), [](bool v) { return v; })) {
+
+            auto endTime = chrono::steady_clock::now();
+            double timeSpent = chrono::duration<double>(endTime - startTime).count();
+            int score = calculateScore(chances, timeSpent);
+
             cout << "Gratulacje! Odgadles slowo: " << word << endl;
+            cout << "Twoj wynik: " << score << " punktow" << endl;
+
+            string playerName;
+            cout << "Podaj swoje imie: ";
+            cin >> playerName;
+
+            vector<Score> highScores = loadHighScores("highscores.txt");
+            highScores.emplace_back(playerName, score);
+            sort(highScores.begin(), highScores.end(), [](const Score& a, const Score& b) {
+                return a.points > b.points;
+            });
+
+            saveHighScores("highscores.txt", highScores);
+            displayHighScores(highScores);
             return 0;
         }
     }
+    
 
     cout << "Przegrales! Slowo to: " << word << endl;
     return 0;
