@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <chrono>
 #include <iomanip>
+#include <set>
+#include <cctype>
 
 using namespace std;
 
@@ -67,21 +69,39 @@ void displayHighScores(const vector<Score>& scores) {
 int calculateScore(int remainingChances, double timeSpent) {
     return static_cast<int>(1000 * remainingChances / (1 + timeSpent));
 }
+
+void displayGuessedLetters(const set<char>& guessedLetters) {
+    cout << "Zgadnięte litery: ";
+    for (char c : guessedLetters) {
+        cout << c << " ";
+    }
+    cout << endl;
+}
 int main() {
     srand(time(0));
     string word = loadRandomWord("words.txt");
     vector<bool> guessed(word.length(), false);
     int chances = 6;
+     set<char> guessedLetters;
 
     auto startTime = chrono::steady_clock::now();
 
     while (chances > 0) {
         displayWord(word, guessed);
         cout << "Pozostalo szans: " << chances << endl;
+        displayGuessedLetters(guessedLetters);
 
         char guess;
         cout << "Podaj litere: ";
         cin >> guess;
+        guess = tolower(guess);
+
+         if (guessedLetters.count(guess) > 0) {
+            cout << "Już zgadywałeś tę literę. Spróbuj innej." << endl;
+            continue;
+        }
+
+        guessedLetters.insert(guess);
 
         bool correct = false;
         for (size_t i = 0; i < word.length(); ++i) {
